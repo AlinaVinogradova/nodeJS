@@ -1,22 +1,28 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Building2, Lock, Mail, User, ArrowRight, CheckCircle2, ShieldCheck, Sparkles } from 'lucide-react';
 
 export default function AuthPage() {
   const [isRegister, setIsRegister] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: ''
-  });
+  const [formData, setFormData] = useState({ name: '', email: '', password: '' });
   const [error, setError] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const { login, register } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const { login, register, demoLogin } = useAuth();
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
     if (error) setError('');
+  };
+
+  const handleDemoLogin = async () => {
+    setError('');
+    try {
+      setLoading(true);
+      await demoLogin();
+    } catch (err) {
+      setError(err.message || 'Demo login failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -24,179 +30,118 @@ export default function AuthPage() {
     setError('');
 
     if (isRegister && !formData.name.trim()) {
-      setError('Please enter your full name');
-      return;
+      return setError('Name is required');
     }
     if (!formData.email.trim() || !formData.email.includes('@')) {
-      setError('Please provide a valid email address');
-      return;
+      return setError('Valid email is required');
     }
-    if (!formData.password || formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      return;
+    if (formData.password.length < 6) {
+      return setError('Password must be at least 6 characters');
     }
 
     try {
-      setIsSubmitting(true);
+      setLoading(true);
       if (isRegister) {
-        await register(formData.name, formData.email, formData.password);
+        await register(formData.name.trim(), formData.email.trim(), formData.password);
       } else {
-        await login(formData.email, formData.password);
+        await login(formData.email.trim(), formData.password);
       }
     } catch (err) {
-      setError(err.message || 'Authentication failed. Please verify your credentials.');
+      setError(err.message || 'Authentication failed');
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  // Helper for quick demo testing
-  const handleFillDemo = () => {
-    setFormData({
-      name: 'Demo Account',
-      email: 'demo@crm.local',
-      password: 'demopassword123'
-    });
-  };
-
   return (
-    <div className="auth-container">
+    <div className="auth-wrapper">
       <div className="auth-card">
-        {/* Brand Banner */}
         <div className="auth-header">
-          <div className="auth-brand-icon">
-            <Building2 size={28} className="text-primary" />
-          </div>
-          <h1 className="auth-title">LeadPulse CRM</h1>
-          <p className="auth-subtitle">
-            Log contacted businesses, advance deals through stages, and stay on top of follow-up reminders
-          </p>
+          <h1>LeadPulse CRM</h1>
+          <p>Track business leads, pipeline stages, and follow-ups</p>
         </div>
 
-        {/* Tab switch */}
         <div className="auth-tabs">
-          <button 
+          <button
             type="button"
             className={`auth-tab ${!isRegister ? 'active' : ''}`}
             onClick={() => { setIsRegister(false); setError(''); }}
           >
             Sign In
           </button>
-          <button 
+          <button
             type="button"
             className={`auth-tab ${isRegister ? 'active' : ''}`}
             onClick={() => { setIsRegister(true); setError(''); }}
           >
-            Create Account
+            Sign Up
           </button>
         </div>
 
-        {/* Error message */}
-        {error && (
-          <div className="auth-error-alert">
-            <span>{error}</span>
-          </div>
-        )}
+        {error && <div className="alert-error">{error}</div>}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="auth-form">
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {isRegister && (
             <div className="form-group">
-              <label className="form-label" htmlFor="name">Full Name</label>
-              <div className="input-with-icon">
-                <User size={16} className="input-icon" />
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  className="form-input"
-                  placeholder="e.g. Jane Miller"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required={isRegister}
-                  autoFocus={isRegister}
-                />
-              </div>
+              <label htmlFor="name">Name</label>
+              <input
+                id="name"
+                name="name"
+                type="text"
+                placeholder="Jane Doe"
+                value={formData.name}
+                onChange={handleChange}
+                required={isRegister}
+              />
             </div>
           )}
 
           <div className="form-group">
-            <label className="form-label" htmlFor="email">Email Address</label>
-            <div className="input-with-icon">
-              <Mail size={16} className="input-icon" />
-              <input
-                type="email"
-                id="email"
-                name="email"
-                className="form-input"
-                placeholder="e.g. sales@yourcompany.com"
-                value={formData.email}
-                onChange={handleChange}
-                required
-                autoFocus={!isRegister}
-              />
-            </div>
+            <label htmlFor="email">Email Address</label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="you@example.com"
+              value={formData.email}
+              onChange={handleChange}
+              required
+            />
           </div>
 
           <div className="form-group">
-            <label className="form-label" htmlFor="password">Password</label>
-            <div className="input-with-icon">
-              <Lock size={16} className="input-icon" />
-              <input
-                type="password"
-                id="password"
-                name="password"
-                className="form-input"
-                placeholder="••••••••"
-                value={formData.password}
-                onChange={handleChange}
-                required
-              />
-            </div>
-            <span className="field-hint">Minimum 6 characters</span>
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="••••••••"
+              value={formData.password}
+              onChange={handleChange}
+              required
+            />
           </div>
 
-          <button 
-            type="submit" 
-            className="btn btn-primary btn-block btn-auth-submit"
-            disabled={isSubmitting}
+          <button
+            type="submit"
+            className="btn btn-primary"
+            style={{ width: '100%', marginTop: '8px', padding: '10px' }}
+            disabled={loading}
           >
-            {isSubmitting ? (
-              <span>Authenticating...</span>
-            ) : (
-              <>
-                <span>{isRegister ? 'Sign Up & Get Started' : 'Log In to Workspace'}</span>
-                <ArrowRight size={16} />
-              </>
-            )}
+            {loading ? 'Processing...' : isRegister ? 'Create Account' : 'Sign In'}
           </button>
-
-          {/* Quick Demo Helper */}
-          <div className="auth-footer-helper">
-            <button 
-              type="button" 
-              className="btn-link-demo"
-              onClick={handleFillDemo}
-            >
-              <Sparkles size={14} />
-              <span>Fill sample credentials</span>
-            </button>
-          </div>
         </form>
 
-        <div className="auth-perks">
-          <div className="perk-item">
-            <CheckCircle2 size={14} className="text-emerald" />
-            <span>Pipeline stage tracking</span>
-          </div>
-          <div className="perk-item">
-            <CheckCircle2 size={14} className="text-emerald" />
-            <span>Automated follow-up alerts</span>
-          </div>
-          <div className="perk-item">
-            <CheckCircle2 size={14} className="text-emerald" />
-            <span>Stage analytics & search</span>
-          </div>
+        <div className="demo-login-wrapper">
+          <span>Just exploring?</span>
+          <button
+            type="button"
+            className="demo-login-link"
+            onClick={handleDemoLogin}
+            disabled={loading}
+          >
+            Quick Demo Login
+          </button>
         </div>
       </div>
     </div>

@@ -54,6 +54,15 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
+  const demoLogin = async () => {
+    const data = await authApi.demoLogin();
+    localStorage.setItem('crm_token', data.token);
+    localStorage.setItem('crm_user', JSON.stringify(data.user));
+    setToken(data.token);
+    setUser(data.user);
+    return data.user;
+  };
+
   const logout = () => {
     localStorage.removeItem('crm_token');
     localStorage.removeItem('crm_user');
@@ -62,7 +71,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, demoLogin, logout, isAuthenticated: !!token }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,15 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { X, Building2, Globe, User, Mail, Phone, Calendar, FileText, CheckCircle2 } from 'lucide-react';
 
 const STAGES = ['New', 'Contacted', 'Replied', 'Meeting', 'Won', 'Lost'];
 
-export default function LeadModal({ 
-  isOpen, 
-  onClose, 
-  onSave, 
-  initialData = null, 
-  defaultStage = 'New' 
-}) {
+export default function LeadModal({ isOpen, onClose, onSave, initialData, defaultStage = 'New' }) {
   const [formData, setFormData] = useState({
     business_name: '',
     website: '',
@@ -20,9 +13,8 @@ export default function LeadModal({
     follow_up_date: '',
     notes: ''
   });
-
-  const [errors, setErrors] = useState({});
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (initialData) {
@@ -48,265 +40,151 @@ export default function LeadModal({
         notes: ''
       });
     }
-    setErrors({});
+    setError('');
   }, [initialData, defaultStage, isOpen]);
-
-  // Handle ESC key to close modal
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
 
   if (!isOpen) return null;
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: null }));
-    }
-  };
-
-  const validate = () => {
-    const newErrors = {};
-    if (!formData.business_name.trim()) {
-      newErrors.business_name = 'Business name is required';
-    }
-    if (formData.contact_email && !formData.contact_email.includes('@')) {
-      newErrors.contact_email = 'Please enter a valid email address';
-    }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!formData.business_name.trim()) {
+      return setError('Business name is required');
+    }
 
     try {
-      setIsSubmitting(true);
+      setSubmitting(true);
       await onSave(formData, initialData?.id);
       onClose();
     } catch (err) {
-      setErrors({ form: err.message || 'Failed to save lead' });
+      setError(err.message || 'Failed to save lead');
     } finally {
-      setIsSubmitting(false);
+      setSubmitting(false);
     }
   };
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        {/* Modal Header */}
+      <div className="modal" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <div className="modal-title-wrap">
-            <Building2 size={22} className="text-primary" />
-            <div>
-              <h2 className="modal-title">
-                {initialData ? 'Edit Lead Details' : 'Add New Business Lead'}
-              </h2>
-              <p className="modal-subtitle">
-                {initialData ? 'Update contact information and pipeline stage' : 'Record a new prospective business to contact'}
-              </p>
-            </div>
-          </div>
-          <button className="btn-close-modal" onClick={onClose} title="Close (Esc)">
-            <X size={20} />
-          </button>
+          <h2>{initialData ? 'Edit Lead' : 'Add New Lead'}</h2>
+          <button className="btn-icon" onClick={onClose} aria-label="Close">✕</button>
         </div>
 
-        {/* Modal Form */}
-        <form onSubmit={handleSubmit} className="modal-form">
-          {errors.form && (
-            <div className="form-error-banner">
-              {errors.form}
-            </div>
-          )}
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body">
+            {error && <div className="alert-error">{error}</div>}
 
-          <div className="form-row">
-            {/* Business Name */}
-            <div className="form-group flex-1">
-              <label className="form-label" htmlFor="business_name">
-                Business Name <span className="text-rose">*</span>
-              </label>
-              <div className="input-with-icon">
-                <Building2 size={16} className="input-icon" />
-                <input
-                  type="text"
-                  id="business_name"
-                  name="business_name"
-                  className={`form-input ${errors.business_name ? 'input-error' : ''}`}
-                  placeholder="e.g. Acme Innovations"
-                  value={formData.business_name}
-                  onChange={handleChange}
-                  autoFocus
-                />
-              </div>
-              {errors.business_name && <span className="field-error">{errors.business_name}</span>}
-            </div>
-
-            {/* Website */}
-            <div className="form-group flex-1">
-              <label className="form-label" htmlFor="website">
-                Website
-              </label>
-              <div className="input-with-icon">
-                <Globe size={16} className="input-icon" />
-                <input
-                  type="text"
-                  id="website"
-                  name="website"
-                  className="form-input"
-                  placeholder="e.g. acme.com or https://acme.com"
-                  value={formData.website}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="form-row">
-            {/* Contact Name */}
-            <div className="form-group flex-1">
-              <label className="form-label" htmlFor="contact_name">
-                Contact Person Name
-              </label>
-              <div className="input-with-icon">
-                <User size={16} className="input-icon" />
-                <input
-                  type="text"
-                  id="contact_name"
-                  name="contact_name"
-                  className="form-input"
-                  placeholder="e.g. Sarah Connor"
-                  value={formData.contact_name}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-
-            {/* Contact Email */}
-            <div className="form-group flex-1">
-              <label className="form-label" htmlFor="contact_email">
-                Contact Email
-              </label>
-              <div className="input-with-icon">
-                <Mail size={16} className="input-icon" />
-                <input
-                  type="email"
-                  id="contact_email"
-                  name="contact_email"
-                  className={`form-input ${errors.contact_email ? 'input-error' : ''}`}
-                  placeholder="e.g. sarah@acme.com"
-                  value={formData.contact_email}
-                  onChange={handleChange}
-                />
-              </div>
-              {errors.contact_email && <span className="field-error">{errors.contact_email}</span>}
-            </div>
-          </div>
-
-          <div className="form-row">
-            {/* Contact Phone */}
-            <div className="form-group flex-1">
-              <label className="form-label" htmlFor="contact_phone">
-                Contact Phone
-              </label>
-              <div className="input-with-icon">
-                <Phone size={16} className="input-icon" />
-                <input
-                  type="tel"
-                  id="contact_phone"
-                  name="contact_phone"
-                  className="form-input"
-                  placeholder="e.g. +1 (555) 234-5678"
-                  value={formData.contact_phone}
-                  onChange={handleChange}
-                />
-              </div>
-            </div>
-
-            {/* Pipeline Stage */}
-            <div className="form-group flex-1">
-              <label className="form-label" htmlFor="stage">
-                Pipeline Stage
-              </label>
-              <select
-                id="stage"
-                name="stage"
-                className="form-select"
-                value={formData.stage}
-                onChange={handleChange}
-              >
-                {STAGES.map(s => (
-                  <option key={s} value={s}>{s}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Follow-up Date */}
-          <div className="form-group">
-            <label className="form-label" htmlFor="follow_up_date">
-              Follow-up Reminder Date
-            </label>
-            <div className="input-with-icon">
-              <Calendar size={16} className="input-icon" />
+            <div className="form-group">
+              <label htmlFor="business_name">Business Name *</label>
               <input
-                type="date"
-                id="follow_up_date"
-                name="follow_up_date"
-                className="form-input"
-                value={formData.follow_up_date}
+                id="business_name"
+                name="business_name"
+                value={formData.business_name}
                 onChange={handleChange}
+                placeholder="Acme Corp"
+                required
               />
             </div>
-            <span className="field-hint">
-              Set a target date to trigger follow-up alerts and overdue notifications.
-            </span>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="website">Website</label>
+                <input
+                  id="website"
+                  name="website"
+                  value={formData.website}
+                  onChange={handleChange}
+                  placeholder="https://example.com"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="stage">Pipeline Stage</label>
+                <select
+                  id="stage"
+                  name="stage"
+                  value={formData.stage}
+                  onChange={handleChange}
+                >
+                  {STAGES.map(s => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="contact_name">Contact Name</label>
+                <input
+                  id="contact_name"
+                  name="contact_name"
+                  value={formData.contact_name}
+                  onChange={handleChange}
+                  placeholder="John Smith"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="contact_email">Contact Email</label>
+                <input
+                  id="contact_email"
+                  name="contact_email"
+                  type="email"
+                  value={formData.contact_email}
+                  onChange={handleChange}
+                  placeholder="john@example.com"
+                />
+              </div>
+            </div>
+
+            <div className="form-row">
+              <div className="form-group">
+                <label htmlFor="contact_phone">Contact Phone</label>
+                <input
+                  id="contact_phone"
+                  name="contact_phone"
+                  value={formData.contact_phone}
+                  onChange={handleChange}
+                  placeholder="+1 (555) 000-0000"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="follow_up_date">Follow-up Reminder Date</label>
+                <input
+                  id="follow_up_date"
+                  name="follow_up_date"
+                  type="date"
+                  value={formData.follow_up_date}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="notes">Notes</label>
+              <textarea
+                id="notes"
+                name="notes"
+                rows={3}
+                value={formData.notes}
+                onChange={handleChange}
+                placeholder="Log discussion notes, next steps..."
+              />
+            </div>
           </div>
 
-          {/* Notes */}
-          <div className="form-group">
-            <label className="form-label" htmlFor="notes">
-              Notes & Interaction History
-            </label>
-            <textarea
-              id="notes"
-              name="notes"
-              rows={3}
-              className="form-textarea"
-              placeholder="Record conversation details, next steps, feedback, deal value..."
-              value={formData.notes}
-              onChange={handleChange}
-            />
-          </div>
-
-          {/* Modal Footer */}
           <div className="modal-footer">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onClose}
-              disabled={isSubmitting}
-            >
+            <button type="button" className="btn btn-secondary" onClick={onClose}>
               Cancel
             </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={isSubmitting}
-            >
-              {isSubmitting ? (
-                <span>Saving...</span>
-              ) : (
-                <span>{initialData ? 'Save Changes' : 'Create Lead'}</span>
-              )}
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? 'Saving...' : initialData ? 'Update Lead' : 'Add Lead'}
             </button>
           </div>
         </form>

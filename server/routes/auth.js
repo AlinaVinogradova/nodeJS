@@ -83,6 +83,53 @@ router.post('/login', async (req, res) => {
   }
 });
 
+// Quick demo login (supports POST and GET)
+const handleDemoLogin = async (req, res) => {
+  try {
+    const demoEmail = 'demo@example.com';
+    let user = db.prepare('SELECT * FROM users WHERE email = ?').get(demoEmail);
+
+    if (!user) {
+      const password_hash = await bcrypt.hash('demo123', 10);
+      const insertUser = db.prepare('INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)');
+      const result = insertUser.run('Demo User', demoEmail, password_hash);
+      const userId = result.lastInsertRowid;
+
+      // Seed initial sample leads for demo user
+      const insertLead = db.prepare(`
+        INSERT INTO leads (user_id, business_name, website, contact_name, contact_email, contact_phone, stage, notes, follow_up_date)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      const today = new Date().toISOString().split('T')[0];
+      const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+      const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+
+      insertLead.run(userId, 'Acme Corp', 'https://acme.example.com', 'Alice Smith', 'alice@acme.example.com', '555-0101', 'Meeting', 'Discussing enterprise tier subscription.', today);
+      insertLead.run(userId, 'Nexus Tech', 'https://nexus.example.com', 'Bob Johnson', 'bob@nexus.example.com', '555-0102', 'Replied', 'Requested product demo and pricing deck.', tomorrow);
+      insertLead.run(userId, 'Peak Solutions', 'https://peak.example.com', 'Carol Williams', 'carol@peak.example.com', '555-0103', 'New', 'Inbound lead from website contact form.', yesterday);
+      insertLead.run(userId, 'Global Logistics', 'https://global.example.com', 'David Brown', 'david@global.example.com', '555-0104', 'Won', 'Contract signed for 12 months.', null);
+
+      user = { id: userId, name: 'Demo User', email: demoEmail };
+    }
+
+    const userData = { id: user.id, name: user.name, email: user.email };
+    const token = jwt.sign({ id: user.id, email: user.email, name: user.name }, JWT_SECRET, { expiresIn: '7d' });
+
+    res.json({
+      message: 'Demo login successful',
+      user: userData,
+      token
+    });
+  } catch (err) {
+    console.error('Demo login error:', err);
+    res.status(500).json({ error: 'Server error during demo login' });
+  }
+};
+
+router.post('/demo', handleDemoLogin);
+router.get('/demo', handleDemoLogin);
+
 // Get current user profile
 router.get('/me', authenticateToken, (req, res) => {
   try {

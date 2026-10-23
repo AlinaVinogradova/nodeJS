@@ -50,6 +50,11 @@ export const authApi = {
       body: JSON.stringify({ email, password })
     }),
 
+  demoLogin: () =>
+    request('/auth/demo', {
+      method: 'POST'
+    }),
+
   getProfile: () => request('/auth/me')
 };
 
@@ -64,8 +69,6 @@ export const leadsApi = {
     const queryString = query.toString();
     return request(`/leads${queryString ? `?${queryString}` : ''}`);
   },
-
-  getLeadById: (id) => request(`/leads/${id}`),
 
   createLead: (leadData) =>
     request('/leads', {
@@ -89,8 +92,4 @@ export const leadsApi = {
     request(`/leads/${id}`, {
       method: 'DELETE'
     }),
-
-  getDashboard: () => request('/leads/dashboard'),
-
-  getReminders: () => request('/leads/reminders')
 };
