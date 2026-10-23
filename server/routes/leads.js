@@ -9,150 +9,12 @@ const VALID_STAGES = ['New', 'Contacted', 'Replied', 'Meeting', 'Won', 'Lost'];
 // All lead routes require authentication
 router.use(authenticateToken);
 
-// Helper function to get today's date formatted as YYYY-MM-DD in local/ISO string
-function getTodayString() {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-// GET dashboard statistics & stage counts
-router.get('/dashboard', (req, res) => {
-  try {
-    const userId = req.user.id;
-    const today = getTodayString();
-
-    // Stage counts
-    const stageRows = db.prepare(`
-      SELECT stage, COUNT(*) as count 
-      FROM leads 
-      WHERE user_id = ? 
-      GROUP BY stage
-    `).all(userId);
-
-    const stageCounts = {
-      New: 0,
-      Contacted: 0,
-      Replied: 0,
-      Meeting: 0,
-      Won: 0,
-      Lost: 0
-    };
-
-    let totalLeads = 0;
-    stageRows.forEach(row => {
-      if (stageCounts.hasOwnProperty(row.stage)) {
-        stageCounts[row.stage] = row.count;
-      }
-      totalLeads += row.count;
-    });
-
-    // Reminders summary
-    const overdueCount = db.prepare(`
-      SELECT COUNT(*) as count 
-      FROM leads 
-      WHERE user_id = ? 
-        AND follow_up_date IS NOT NULL 
-        AND follow_up_date != '' 
-        AND follow_up_date < ?
-        AND stage NOT IN ('Won', 'Lost')
-    `).get(userId, today).count;
-
-    const todayCount = db.prepare(`
-      SELECT COUNT(*) as count 
-      FROM leads 
-      WHERE user_id = ? 
-        AND follow_up_date = ?
-        AND stage NOT IN ('Won', 'Lost')
-    `).get(userId, today).count;
-
-    const upcomingCount = db.prepare(`
-      SELECT COUNT(*) as count 
-      FROM leads 
-      WHERE user_id = ? 
-        AND follow_up_date > ?
-        AND stage NOT IN ('Won', 'Lost')
-    `).get(userId, today).count;
-
-    // Conversion metrics
-    const closedLeads = (stageCounts.Won || 0) + (stageCounts.Lost || 0);
-    const winRate = closedLeads > 0 ? Math.round(((stageCounts.Won || 0) / closedLeads) * 100) : 0;
-    const overallWinRate = totalLeads > 0 ? Math.round(((stageCounts.Won || 0) / totalLeads) * 100) : 0;
-
-    res.json({
-      totalLeads,
-      stageCounts,
-      reminders: {
-        overdue: overdueCount,
-        today: todayCount,
-        upcoming: upcomingCount,
-        totalActiveReminders: overdueCount + todayCount + upcomingCount
-      },
-      metrics: {
-        winRate,
-        overallWinRate,
-        closedLeads,
-        activeLeads: totalLeads - closedLeads
-      }
-    });
-  } catch (err) {
-    console.error('Dashboard error:', err);
-    res.status(500).json({ error: 'Server error loading dashboard' });
-  }
-});
-
-// GET reminders list
-router.get('/reminders', (req, res) => {
-  try {
-    const userId = req.user.id;
-    const today = getTodayString();
-
-    const overdue = db.prepare(`
-      SELECT * FROM leads 
-      WHERE user_id = ? 
-        AND follow_up_date IS NOT NULL 
-        AND follow_up_date != '' 
-        AND follow_up_date < ? 
-        AND stage NOT IN ('Won', 'Lost')
-      ORDER BY follow_up_date ASC
-    `).all(userId, today);
-
-    const dueToday = db.prepare(`
-      SELECT * FROM leads 
-      WHERE user_id = ? 
-        AND follow_up_date = ? 
-        AND stage NOT IN ('Won', 'Lost')
-      ORDER BY business_name ASC
-    `).all(userId, today);
-
-    const upcoming = db.prepare(`
-      SELECT * FROM leads 
-      WHERE user_id = ? 
-        AND follow_up_date > ? 
-        AND stage NOT IN ('Won', 'Lost')
-      ORDER BY follow_up_date ASC
-    `).all(userId, today);
-
-    res.json({
-      todayDate: today,
-      overdue,
-      today: dueToday,
-      upcoming
-    });
-  } catch (err) {
-    console.error('Reminders error:', err);
-    res.status(500).json({ error: 'Server error loading reminders' });
-  }
-});
-
 // GET leads with optional search, filtering and sorting
 router.get('/', (req, res) => {
   try {
     const userId = req.user.id;
     const { q, stage, reminder, sort } = req.query;
-    const today = getTodayString();
+    const today = new Date().toISOString().split('T')[0];
 
     let query = 'SELECT * FROM leads WHERE user_id = ?';
     const params = [userId];
@@ -206,20 +68,6 @@ router.get('/', (req, res) => {
   } catch (err) {
     console.error('Fetch leads error:', err);
     res.status(500).json({ error: 'Server error fetching leads' });
-  }
-});
-
-// GET single lead
-router.get('/:id', (req, res) => {
-  try {
-    const lead = db.prepare('SELECT * FROM leads WHERE id = ? AND user_id = ?').get(req.params.id, req.user.id);
-    if (!lead) {
-      return res.status(404).json({ error: 'Lead not found' });
-    }
-    res.json({ lead });
-  } catch (err) {
-    console.error('Fetch lead by ID error:', err);
-    res.status(500).json({ error: 'Server error fetching lead' });
   }
 });
 

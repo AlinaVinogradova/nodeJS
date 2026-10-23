@@ -8,6 +8,14 @@ import LeadList from './components/LeadList';
 
 const STAGES = ['New', 'Contacted', 'Replied', 'Meeting', 'Won', 'Lost'];
 
+const getTodayString = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export default function App() {
   const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
 
@@ -26,15 +34,7 @@ export default function App() {
   const [editingLead, setEditingLead] = useState(null);
   const [modalStage, setModalStage] = useState('New');
 
-  const getTodayString = () => {
-    const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  const todayStr = getTodayString();
+  const todayStr = useMemo(() => getTodayString(), []);
 
   const fetchLeads = useCallback(async () => {
     if (!isAuthenticated) return;

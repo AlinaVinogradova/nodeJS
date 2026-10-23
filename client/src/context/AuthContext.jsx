@@ -11,6 +11,13 @@ export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem('crm_token'));
   const [loading, setLoading] = useState(true);
 
+  const logout = () => {
+    localStorage.removeItem('crm_token');
+    localStorage.removeItem('crm_user');
+    setToken(null);
+    setUser(null);
+  };
+
   useEffect(() => {
     async function initAuth() {
       const storedToken = localStorage.getItem('crm_token');
@@ -19,7 +26,7 @@ export function AuthProvider({ children }) {
           const { user } = await authApi.getProfile();
           setUser(user);
           localStorage.setItem('crm_user', JSON.stringify(user));
-        } catch (err) {
+        } catch {
           logout();
         }
       }
@@ -61,13 +68,6 @@ export function AuthProvider({ children }) {
     setToken(data.token);
     setUser(data.user);
     return data.user;
-  };
-
-  const logout = () => {
-    localStorage.removeItem('crm_token');
-    localStorage.removeItem('crm_user');
-    setToken(null);
-    setUser(null);
   };
 
   return (
